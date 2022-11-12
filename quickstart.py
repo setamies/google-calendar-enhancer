@@ -8,9 +8,10 @@ import dateutil.parser
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
+import sys
+from sys import argv
 
 import os
-import csv
 import logic
 
 from google.auth.transport.requests import Request
@@ -23,51 +24,7 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'] # Removing the .readonly will make enable modifying cal
 
 
-"""
-===========================================BRAINSTORMING===========================================
-This app is used for enhancing the Google Calendar by adding some functionality to help 
-planning your days/weeks/months. For instance, using the app you can quickly get information 
-about how much time you've spent / are going to spend doing certain activities during a certain timeframe. 
-
-If I decide to publish this to GitHub, remember to modify the token.json file so that I put all the sensitive
-information to an .ENV file. Also create a .gitignore file!
-
-For some reason the default blue color doesn't have a color id, so that's a bit tricky. 
-
-Maybe use modules and packages.
-- A module is an individual python file
-- a package is a directory containing multiple python modules
-
-- When you run a terminal command, you could, for instance, get data for the previous 5 days etc.
-- Store data in SQL?
-
-app.py
-ui
-logic
-data/repo
-
-=====COLUMNS=====
-YEAR WEEK DAY DATE ACTION START END DURATION UGLYSTART UGLYEND
--> Could add weekday?
-
-=====Database operations=====
-- Need a function that fetches the data from point X to this date, and writes a dataframe.
-- Need a function that fetches data for a certain time period
-
-Group related functionality together
---> folders such as:
-- api
-- utils/logic
-- database
-
-SHOULD BE ABLE TO FETCH DATABASE LIKE:
-
-DATE CATEGORY HOURS
-
-"""
-
 # ==================================FUNCTION SECTION==================================
-
 def csvHandler(input):
     os.makedirs('database', exist_ok=True)
     input.to_csv('database/time-spent.csv', index=False)
@@ -96,7 +53,6 @@ def getComingEvents(service):
 def setEvents(service):
     from_date = datetime.date(2022, 8, 29)
     today = datetime.date.today()
-    print("Getting today's events")
     
     # Define the time period you want to fetch data from
     startTime = str(from_date) + "T00:00:00Z"
@@ -108,7 +64,6 @@ def setEvents(service):
     events = events_result.get('items', [])
 
     if not events:
-        print('No events for today.')
         return
 
     year_col = []
@@ -134,11 +89,8 @@ def setEvents(service):
         readable_start = new_start.strftime("%H:%M")
         readable_end = new_end.strftime("%H:%M")
 
-        
-
         # Create columns & row data
         # YEAR WEEK DAY DATE ACTION START END DURATION UGLYSTART UGLYEND
-
         year = new_start.strftime("%Y")
         week = new_start.isocalendar()[1]
         date = new_start.strftime("%Y-%m-%d")
@@ -155,22 +107,7 @@ def setEvents(service):
         start_times.append(readable_start)
         end_times.append(readable_end)
         actions.append(event["summary"])
-        durations.append((new_end - new_start))
-        
-
-        # summary is the event name!!! colorId might also be useful if I want to be able to use that
-        """ 
-        print(type(new_start))
-        print(type(readable_start))
-        print(readable_start + "-" + readable_end, event['summary'], "Duration:", (new_end - new_start)) # "Duration: ", (new_end - new_start) 
-        """
-        # Get Date only
-        print(year)
-        print(month)
-        print(day)
-        print(week)
-        print(date)
-        
+        durations.append((new_end - new_start).seconds/60/60)
         
     # Create the dataframe 
     dictory = {
@@ -186,17 +123,12 @@ def setEvents(service):
         "string-start": machine_readable_start,
         "string-end": machine_readable_end
     }
+
     time_df = pd.DataFrame.from_dict(dictory)
-    time_df['duration'] = time_df['duration'].astype(str).str.split('0 days ').str[-1]
     csvHandler(time_df)
     
-    time_df.duration = pd.to_timedelta(time_df['duration'])
-    print(time_df['duration'].sum())
-
-
 def commitHours(creds):    
     try:
-
         # Could make the upcoming events to a function.
         service = build('calendar', 'v3', credentials=creds)
 
@@ -230,9 +162,31 @@ def main():
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
     
-    # commitHours(creds)
     #logic.getData()
-    logic.getHours()
+
+    if argv[1] == 'get':
+        print("Work in progress")
+
+    elif argv[1] == 'summary':
+        # Not very elegant, try to find a better way to express this        
+        if len(sys.argv)  == 2:
+            logic.getSummary()
+        elif len(sys.argv) == 3:
+            logic.getSummary(argv[2])
+        elif len(sys.argv) == 4:
+            logic.getSummary(argv[2], argv[3])
+        elif len(sys.argv) == 5:
+            logic.getSummary(argv[2], argv[3], argv[4])            
+        elif len(sys.argv) == 6:
+            logic.getSummary(argv[2], argv[3], argv[4], argv[5])  
+
+    elif argv[1] == 'store-data':
+        commitHours(creds)
+    elif argv[1] == 'help':
+        logic.getHelp()
+            
+
+    #logic.getHours()
 
 if __name__ == '__main__':
     main()
