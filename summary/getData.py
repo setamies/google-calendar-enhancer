@@ -9,13 +9,12 @@ import argparse
 from datetime import datetime
 from datetime import date
 
-"""
-=== ARGPARSE MIGHT BE SUPERIOR ===
-In argparse, you can have a mandatory argument, as well as optional arguments,
-which are indicated by adding one or two dashes in front of the arg, for instance,
---date
-"""
+# Fetch data from the csv file.
 df = pd.read_csv("database/time-spent.csv")
+
+# ======================== DEFAULT ACTIONS ========================
+actions_to_search = ["Programming", "Vainu", "Gym"]
+
 
 
 # ======================== TIMEPERIOD FUNCTIONS ========================
@@ -54,14 +53,6 @@ def getDailyBetween(inputdf):
 def getTotalBetween(inputdf, timespan):
     print(inputdf[[timespan, "action", "duration"]].groupby([timespan, "action"], as_index=False).sum())
 
-# ============================== ERROR HANDLING ==============================
-def wrongAction(action):
-    print(action)
-    wrong_actions = ["week", "year", "date", "month", "day"]
-    if action in wrong_actions:
-        print("Action must be defined as - or by the name of the action.")
-        return
-
 # ============================== MAIN FUNCTIONALITY ==============================
 def getSummary(action = "-", duration="date", specify=str(date.today())):
     # Convert timespan columns to strings to avoid search errors.
@@ -71,10 +62,9 @@ def getSummary(action = "-", duration="date", specify=str(date.today())):
     if specify == "total":
         print("TOTAL IS TOTAL")
 
-        # actions_to_search can be altered for your needs. Fetches specified actions by default.
+        # actions_to_search can be altered for your needs. Fetches specified actions by default. NOT WORKING
         if (action == "-"):
-            actions_to_search = ["Programming", "Vainu", "Gym"]
-            df_summary = df[df["action"].isin(actions_to_search) ]
+            df_summary = df[df["action"].isin(actions_to_search)]
         else:
             print("Searching by: ", action)
             df_summary = df[df["action"] == action]            
@@ -94,9 +84,28 @@ def getSummary(action = "-", duration="date", specify=str(date.today())):
 
 # RETURNS USEFUL INFORMATION TO USERS ABOUT THE COMMANDS 
 def getHelp():
-    print(f'\nTHE STRUCTURE FOR -summary COMMAND: \n {"=" *50}')
-    print(" - Can be run without args, which returns a summary of the current day. \n - Can be given 1-3 additional args, specified below.\n")    
-    print("cal summary __activity__ __timespan__ __specificity__\n")
-    print("__activity__: \n - Can be - in which case default activities are returned. \n - Replace - with activity of interest to fetch information about that.\n")
-    print("__timespan__: \n - Can be year/month/week/day \n - Default arg is date, filtering the df by dates\n")
-    print("__specify__: \n - By default fetches current date. \n - Can be given a value of total, which gives total hours for specified acitities. \n - Can be given a week/year/day/date, for instance, 45 (week), giving total hours spent on that timeperiod\n")
+    cmdlist = ["summary", "store-data"]
+    print("\nCommands available: \n -summary \n -store-data")
+    print("\n")
+    while True:    
+        get_help_for = input("Type the name of the command to see more: ")
+        print("\n")
+        if get_help_for not in cmdlist:
+            print(f'There is no such command as: {get_help_for}\n')
+        else:
+            break
+    print(get_help_for)
+
+    if get_help_for == "summary":            
+        print(f'\nINFORMATION ABOUT THE -summary COMMAND: \n {"=" *50}')
+        print(" - Can be run without args, which returns a summary of the current day. \n - Can be given 1-3 additional args, specified below.\n")    
+        print("cal summary __activity__ __timespan__ __specificity__\n")
+        print("__activity__: \n - Can be - in which case default activities are returned. \n - Replace - with activity of interest to fetch information about that.\n")
+        print("__timespan__: \n - Can be year/month/week/day \n - Default arg is date, filtering the df by dates\n")
+        print("__specify__: \n - By default fetches current date. \n - Can be given a value of total, which gives total hours for specified acitities. \n - Can be given a week/year/day/date, for instance, 45 (week), giving total hours spent on that timeperiod\n")
+    else:
+        print(f'\nINFORMATION ABOUT THE -store-data COMMAND: \n {"=" *50}')
+        print(" - When run, overwrites the existing csv file, if there is one.")
+        print(" - Can be run without args, which stores data from the current day to a default day in the past. \n - Can be given 1 additional argument, specified below.\n")    
+        print("cal store-data __to_date__\n")        
+        print("__to_date__: \n - Given a date in yyyy-mm-dd format, it stores data from the default day up to the given date.\n")
