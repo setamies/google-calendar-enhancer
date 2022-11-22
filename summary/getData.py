@@ -9,8 +9,13 @@ import argparse
 from datetime import datetime
 from datetime import date
 
+from store_data import csvExists as db
 # Fetch data from the csv file.
-df = pd.read_csv("database/time-spent.csv")
+
+if db():
+    df = pd.read_csv("database/time-spent.csv")
+else:
+    df = pd.DataFrame()
 
 # ======================== DEFAULT ACTIONS ========================
 actions_to_search = ["Programming", "Vainu", "Gym"]
@@ -56,31 +61,34 @@ def getTotalBetween(inputdf, timespan):
 # ============================== MAIN FUNCTIONALITY ==============================
 def getSummary(action = "-", duration="date", specify=str(date.today())):
     # Convert timespan columns to strings to avoid search errors.
-    df[["year", "week", "month", "day"]] = df[["year", "week", "month", "day"]].astype(str)
+    if db():
+        df[["year", "week", "month", "day"]] = df[["year", "week", "month", "day"]].astype(str)
 
-    # Filter df based on duration or duration & action.    
-    if specify == "total":
-        print("TOTAL IS TOTAL")
+        # Filter df based on duration or duration & action.    
+        if specify == "total":
+            print("TOTAL IS TOTAL")
 
-        # actions_to_search can be altered for your needs. Fetches specified actions by default. NOT WORKING
-        if (action == "-"):
-            df_summary = df[df["action"].isin(actions_to_search)]
-        else:
-            print("Searching by: ", action)
-            df_summary = df[df["action"] == action]            
-        getTotalBetween(df_summary, duration)
-    
-    else:
-        if (action == "-"):
-            df_summary = df[df[duration] == specify]
-            getDailyBetween(df_summary)
-        else:
-            try:
+            # actions_to_search can be altered for your needs. Fetches specified actions by default. NOT WORKING
+            if (action == "-"):
+                df_summary = df[df["action"].isin(actions_to_search)]
+            else:
                 print("Searching by: ", action)
-                df_summary = df[(df[duration] == specify) & (df["action"] == action)]            
+                df_summary = df[df["action"] == action]            
+            getTotalBetween(df_summary, duration)
+        
+        else:
+            if (action == "-"):
+                df_summary = df[df[duration] == specify]
                 getDailyBetween(df_summary)
-            except:
-                print("Action has to be - or the name of the action. Command structure should be: cal summary [action] [timespan] [specify]")        
+            else:
+                try:
+                    print("Searching by: ", action)
+                    df_summary = df[(df[duration] == specify) & (df["action"] == action)]            
+                    getDailyBetween(df_summary)
+                except:
+                    print("Action has to be - or the name of the action. Command structure should be: cal summary [action] [timespan] [specify]")        
+    else:
+        print("No database exists.")
 
 # RETURNS USEFUL INFORMATION TO USERS ABOUT THE COMMANDS 
 def getHelp():

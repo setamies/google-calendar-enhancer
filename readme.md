@@ -70,15 +70,22 @@ For example, to get your events for this day, write the following:
 cl summary
 ```
 
-
-
 ### Future update ideas
 
 - Improve functionality of the store-data command:
     - For example, make it possible to alter the default from_date
     - Enable storing data by typing a week, month, etc., and taking the last day of the specified timeframe.
     - Refrain from overriding the (possibly) existing database each time the command is run.
+
 - Add data analytics 
+
 - ColorId categorization:
     - This would enable more imaginative names for activities and more exciting insights in the long run. I haven't added this functionality yet, because for some reason, google calendars default activity color doesn't have a colorId, and I am greatly fond of the default color.
+    - Wordcloud from activities
+
 - Improve error handling. At the moment, the program will throw cryptic messages to unsuspecting users.
+    - For instance, if the user tried to run the summary command before there is a database, the program can't hande it.
+
+Recent updates: 
+- Built a new command (update) that enables overwriting data beginning from a certain date. 
+- Created a new function called updateData and made changes to csvHandler.

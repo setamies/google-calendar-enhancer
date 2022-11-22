@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime, date, timedelta
 import dateutil.parser
 import pandas as pd
 from pandas import DataFrame
@@ -7,56 +8,42 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 import os
+from os import path
 
 # ======================== CHANGE THIS TO FETCH DATA BEGINNING FROM THIS DATE ========================
-from_date = datetime.date(2022, 8, 29)
+from_date = date(2022, 8, 29)  # 2022, 8, 29 Google API only fetches 250 rows of data per call. Need to fix this!
 
-
-
+def csvExists():
+    if os.path.exists('database/time-spent.csv'):
+        return True
+    return False
 
 # Completely overwrites existing CSV, if there is one.
-def csvHandler(input):
-    os.makedirs('database', exist_ok=True)
-    input.to_csv('database/time-spent.csv', index=False)
 
-def getComingEvents(service): 
-    now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-    print('Getting the upcoming 10 events')
-    events_result = service.events().list(calendarId='primary', timeMin=now,
-                                              maxResults=10, singleEvents=True,
-                                              orderBy='startTime').execute()
-    events = events_result.get('items', [])
+def csvHandler(input, update=False, update_from=False): # Receives df
+    if csvExists() and not update:
+        print("Appending data to existing db")
+        input.to_csv('database/time-spent.csv', mode='a', index=False, header=False)
+    
+    elif csvExists() and update:
+        print("WORK IN PROGRESS")
+        # Overwrite beginning from a certain point in time. not sure how done.
 
-    if not events:
-        print('No upcoming events found.')
-        return
+        cdf = pd.read_csv('database/time-spent.csv')
+        cdf['date'] = pd.to_datetime(cdf['date'])
+        print("updating from: ", update_from)
+        cdf = cdf[~(cdf['date'] >= update_from)]
+        
+        updated_df = pd.concat([cdf, input])
+        updated_df.to_csv('database/time-spent.csv', index=False)
+        
+    else:
+        os.makedirs('database', exist_ok=True)
+        input.to_csv('database/time-spent.csv', index=False)
+        
 
-    # Prints the start and name of the next 10 events
-    for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-        print(start, event['summary'])
-
-# Fetch data between dates X and Y and store in csv.
-def fetchAndStoreData(creds, to_date = datetime.date.today()):    
-    try:
-        # Could make the upcoming events to a function.
-        service = build('calendar', 'v3', credentials=creds)
-
-        # Call the Calendar API
-        print(to_date)
-
-        # Define the time period you want to fetch data from
-        startTime = str(from_date) + "T00:00:00Z"
-        endTime = str(to_date) + "T23:59:59Z"
-
-        events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,
-                                                singleEvents=True,
-                                                orderBy='startTime', timeZone="Europe/Helsinki").execute()
-        events = events_result.get('items', [])
-
-        if not events:
-            return
-
+def buildDf(api_events):
+            
         year_col = []
         week_col = []
         date_col = []
@@ -69,7 +56,7 @@ def fetchAndStoreData(creds, to_date = datetime.date.today()):
         machine_readable_start = []
         machine_readable_end = []
 
-        for event in events:
+        for event in api_events:
 
             start = event['start'].get('dateTime', event['start'].get('date'))
             end = event['end'].get('dateTime', event['end'].get('date'))
@@ -113,8 +100,81 @@ def fetchAndStoreData(creds, to_date = datetime.date.today()):
             "string-start": machine_readable_start,
             "string-end": machine_readable_end
         }
-        time_df = pd.DataFrame.from_dict(dictory)
+        append_df = pd.DataFrame.from_dict(dictory)
+        return append_df
+
+
+# Fetch data between dates X and Y and store in csv.
+def fetchAndStoreData(creds, to_date = date.today()):    
+    try:
+        service = build('calendar', 'v3', credentials=creds)
+
+        print(to_date)
+
+        # Check the last date for stored data in the csv file, then fetch data beginning from the following date.
+        if csvExists():
+            with open('database/time-spent.csv', 'r') as csv:
+                existing_data_to = datetime.strptime([[x.strip() for x in line.strip().split(',')] for line in csv.readlines()][-1][1], "%Y-%m-%d")
+            print("Type of existing data: ", type(existing_data_to))
+            append_from = existing_data_to + timedelta(days=1)
+            startTime = str(append_from) + "T00:00:00Z"
+
+        else:
+            startTime = str(from_date) + "T00:00:00Z"
+        
+        endTime = str(to_date) + "T23:59:59Z"
+        events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,
+                                                singleEvents=True,
+                                                orderBy='startTime', timeZone="Europe/Helsinki").execute()
+        events = events_result.get('items', [])
+
+        if not events:
+            return
+
+        time_df = buildDf(events)
         csvHandler(time_df)
 
     except HttpError as error:
         print('An error occurred: %s' % error)
+
+
+# Fetch data beginning from date X and overwrite from there.
+def updateData(creds, from_date, to_date = date.today()):
+    try:
+        service = build('calendar', 'v3', credentials=creds)
+
+        startTime = str(from_date) + "T00:00:00Z"
+        endTime = str(to_date) + "T23:59:59Z"
+
+        events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,
+                                                singleEvents=True,
+                                                orderBy='startTime', timeZone="Europe/Helsinki").execute()
+        events = events_result.get('items', [])
+
+        if not events:
+            return
+
+        time_df = buildDf(events)
+        csvHandler(time_df, True, from_date)
+
+    except HttpError as error:
+        print('An error occurred: %s' % error)
+
+
+def getComingEvents(service): 
+    now = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+    print('Getting the upcoming 10 events')
+    events_result = service.events().list(calendarId='primary', timeMin=now,
+                                              maxResults=10, singleEvents=True,
+                                              orderBy='startTime').execute()
+    events = events_result.get('items', [])
+
+    if not events:
+        print('No upcoming events found.')
+        return
+
+    # Prints the start and name of the next 10 events
+    for event in events:
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        print(start, event['summary'])
+

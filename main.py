@@ -57,6 +57,9 @@ def main():
         elif len(sys.argv) == 3:
             store_data.fetchAndStoreData(creds, argv[2])
 
+    elif argv[1] == 'updatefrom': 
+        store_data.updateData(creds, argv[2])
+
     elif argv[1] == 'help':
         summary.getHelp()
             
