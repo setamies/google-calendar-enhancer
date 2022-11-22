@@ -111,18 +111,19 @@ def fetchAndStoreData(creds, to_date = date.today()):
 
         print(to_date)
 
-        # Check the last date for stored data in the csv file, then fetch data beginning from the following date.
+        # If a df exists, overwrite from the day we have data from.
         if csvExists():
             with open('database/time-spent.csv', 'r') as csv:
                 existing_data_to = datetime.strptime([[x.strip() for x in line.strip().split(',')] for line in csv.readlines()][-1][1], "%Y-%m-%d")
-            print("Type of existing data: ", type(existing_data_to))
-            append_from = existing_data_to + timedelta(days=1)
-            startTime = str(append_from) + "T00:00:00Z"
-
+            updateData(creds, existing_data_to, to_date) 
+            return
+        
         else:
             startTime = str(from_date) + "T00:00:00Z"
+            endTime = str(to_date) + "T23:59:59Z"
         
-        endTime = str(to_date) + "T23:59:59Z"
+
+        print("start time: ", startTime)
         events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,
                                                 singleEvents=True,
                                                 orderBy='startTime', timeZone="Europe/Helsinki").execute()
@@ -139,23 +140,22 @@ def fetchAndStoreData(creds, to_date = date.today()):
 
 
 # Fetch data beginning from date X and overwrite from there.
-def updateData(creds, from_date, to_date = date.today()):
+def updateData(creds, date_from, to_date = date.today()):
     try:
         service = build('calendar', 'v3', credentials=creds)
 
-        startTime = str(from_date) + "T00:00:00Z"
+        startTime = str(date_from.strftime('%Y-%m-%d')) + "T00:00:00Z"
         endTime = str(to_date) + "T23:59:59Z"
 
         events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,
                                                 singleEvents=True,
                                                 orderBy='startTime', timeZone="Europe/Helsinki").execute()
         events = events_result.get('items', [])
-
         if not events:
             return
 
         time_df = buildDf(events)
-        csvHandler(time_df, True, from_date)
+        csvHandler(time_df, True, date_from)
 
     except HttpError as error:
         print('An error occurred: %s' % error)
