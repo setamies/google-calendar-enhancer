@@ -144,7 +144,7 @@ def updateData(creds, date_from, to_date = date.today()):
     try:
         service = build('calendar', 'v3', credentials=creds)
 
-        startTime = str(date_from.strftime('%Y-%m-%d')) + "T00:00:00Z"
+        startTime = date_from + "T00:00:00Z" #str(date_from.strftime('%Y-%m-%d'))
         endTime = str(to_date) + "T23:59:59Z"
 
         events_result = service.events().list(calendarId='primary', timeMin=startTime, timeMax=endTime,

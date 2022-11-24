@@ -86,6 +86,6 @@ cl summary
 - Improve error handling. At the moment, the program will throw cryptic messages to unsuspecting users.
     - For instance, if the user tried to run the summary command before there is a database, the program can't hande it.
 
-Recent updates: 
+### Recent updates: 
 - Built a new command (update) that enables overwriting data beginning from a certain date. 
 - Created a new function called updateData and made changes to csvHandler.
